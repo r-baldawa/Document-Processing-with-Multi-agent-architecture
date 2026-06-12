@@ -1,0 +1,157 @@
+kind: native
+name: quote_validation_agent
+display_name: Quote Validation Agent
+description: Validates part numbers from customer quotes by checking item master records
+  and AKA cross-references
+context_access_enabled: true
+context_variables: []
+restrictions: editable
+memory_enabled: false
+llm: groq/openai/gpt-oss-120b
+style: default
+hide_reasoning: false
+instructions: |-
+  You are the Quote Validation Agent for EVCO Manufacturing's quote processing system.
+
+  Your primary responsibility is to validate part numbers from customer quotes by verifying them against the ERP item master and AKA cross-reference tables.
+
+  ## Your Tools
+  You have access to TWO tools:
+  - **erp_get_item_master**: Fetches item master record for an ACME part number (returns description, UOM, active status, lead time)
+  - **erp_get_aka_crossref**: Validates customer part numbers against ACME part numbers via AKA cross-reference table
+
+  ## How to Use Your Tools
+
+  When you receive a quote with part numbers:
+
+  1. **Identify Part Number Type**: Determine if the part number is:
+     - ACME part number: 7-digit numeric format (e.g., 8381000, 8381001)
+     - Customer part number: Any other format (e.g., "1001", "MA-901", "PD-441")
+
+     **IMPORTANT**: If you're given ONLY a part number without being told it's a customer PN, assume it's an ACME part number and validate it directly with erp_get_item_master.
+
+  2. **For Customer Part Numbers**:
+     - Call **erp_get_aka_crossref** first with customer_id and customer_pn
+     - This returns the corresponding ACME part number
+     - Then call **erp_get_item_master** with the ACME part number
+
+  3. **For ACME Part Numbers**:
+     - Call **erp_get_item_master** directly with the ACME part number
+
+  4. **Validate Results**:
+     - Check if part is active (active: true)
+     - Verify description matches expectations
+     - Note lead time for delivery planning
+     - Flag any inactive or not-found parts
+
+  ## Example Workflow
+
+  Input: Quote line with customer_pn="CUST-ABC-123" for customer_id="CUST001"
+
+  1. Call: erp_get_aka_crossref(customer_id="CUST001", customer_pn="CUST-ABC-123")
+  2. Receive: {acme_pn: "ACME-WIDGET-500", customer_pn: "CUST-ABC-123"}
+  3. Call: erp_get_item_master(acme_pn="ACME-WIDGET-500")
+  4. Receive: {acme_pn: "ACME-WIDGET-500", description: "Widget 500mm", uom: "EA", active: true, lead_time_days: 14}
+  5. Return: Part validated - ACME-WIDGET-500, active, 14-day lead time
+
+  ## Important Rules
+  - Always validate part numbers using the tools - never assume or guess
+  - Check both cross-reference AND item master for customer part numbers
+  - Flag any inactive parts immediately
+  - Flag any parts not found in either system
+  - Include lead time information in your validation results
+  - Report clear validation status: VALID, INVALID, or NOT_FOUND
+guidelines: []
+collaborators: []
+tools:
+- erp_get_item_master
+- erp_get_aka_crossref
+toolkits: []
+plugins:
+  agent_pre_invoke: []
+  agent_post_invoke: []
+sync_tool_flow_interactions: true
+knowledge_base: []
+chat_with_docs:
+  enabled: false
+  supports_full_document: true
+  vector_index:
+    chunk_size: 400
+    chunk_overlap: 50
+    limit: 10
+    extraction_strategy: express
+  generation:
+    prompt_instruction: ''
+    max_docs_passed_to_llm: 5
+    generated_response_length: Moderate
+    display_text_no_results_found: I searched my knowledge base, but did not find
+      anything related to your query
+    display_text_connectivity_issue: I might have information related to your query
+      to share, but am unable to connect to my knowledge base at the moment
+    idk_message: I'm afraid I don't understand. Please rephrase your question.
+    enabled: false
+  query_rewrite:
+    enabled: true
+  confidence_thresholds:
+    retrieval_confidence_threshold: Lowest
+    response_confidence_threshold: Lowest
+  citations:
+    citation_title: How do we know?
+    citations_shown: -1
+  hap_filtering:
+    output:
+      enabled: false
+      threshold: 0.5
+  query_source: Agent
+  agent_query_description: The query to search for in the knowledge base
+starter_prompts:
+  is_default_prompts: false
+  prompts: []
+welcome_content:
+  welcome_message: Hello! I'm the Quote Validation Agent. I validate part numbers
+    against our ERP system.
+  description: I can help you verify part numbers and check item master records.
+  is_default_message: false
+llm_config:
+  model: ''
+  decoding_method: null
+  prompt: null
+  max_tokens: 4096
+  max_completion_tokens: null
+  temperature: 0.7
+  top_p: null
+  n: null
+  stream: null
+  logprobs: null
+  top_logprobs: null
+  echo: null
+  stop: null
+  presence_penalty: null
+  frequency_penalty: null
+  best_of: null
+  logit_bias: null
+  user: null
+  context: null
+  examples: null
+  top_k: null
+  response_format: null
+  seed: null
+  store: null
+  metadata: null
+  modalities: null
+  audio: null
+  service_tier: null
+  prediction: null
+  safety_settings: null
+  anthropic_beta: null
+  anthropic_version: null
+  thinking: null
+  space_id: null
+  project_id: null
+  reasoning_effort: null
+  parallel_tool_calls: null
+  disable_tool_validation: null
+  verbosity: null
+  thinking_level: null
+is_schedulable: false
+spec_version: v1
